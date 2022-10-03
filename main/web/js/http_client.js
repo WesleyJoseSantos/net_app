@@ -12,8 +12,6 @@ class HttpClient {
                     var response = JSON.parse(this.responseText)
                     return resolve(response)
                 } catch (err) {
-                    console.error(err);
-                    console.log(this.responseText)
                     return resolve(this.responseText)
                 }
             }

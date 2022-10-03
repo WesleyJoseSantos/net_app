@@ -25,4 +25,9 @@ class MqttClientConfig {
     transport = MqttTransport.OVER_TCP
 }
 
-export { WifiStaConfig, WifiConn, MqttClientConfig }
+class NetSettigs {
+    wifi = new WifiStaConfig()
+    mqtt = new MqttClientConfig()
+}
+
+export { WifiStaConfig, WifiConn, MqttClientConfig, NetSettigs }

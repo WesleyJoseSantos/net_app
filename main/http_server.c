@@ -32,11 +32,11 @@ static const char *TAG = "http_server";
 
 static void http_server_register_routes(void);
 
+static esp_err_t net_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_index_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_post_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_index_handler(httpd_req_t *req);
-static esp_err_t net_save_index_handler(httpd_req_t *req);
 static esp_err_t file_get_handler(httpd_req_t *req);
 static esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename);
 
@@ -69,6 +69,13 @@ static void http_server_register_routes(void)
 {
     static file_server_t file_server;
 
+    httpd_uri_t net_post = {
+        .uri = "/v1/net",
+        .handler = net_post_handler,
+        .method = HTTP_POST,
+    };
+    httpd_register_uri_handler(this, &net_post);
+
     httpd_uri_t net_wifi_post = {
         .uri = "/v1/net/wifi",
         .handler = net_wifi_post_handler,
@@ -97,13 +104,6 @@ static void http_server_register_routes(void)
     };
     httpd_register_uri_handler(this, &net_mqtt_index);
 
-    httpd_uri_t net_save_index = {
-        .uri = "/v1/net/save",
-        .handler = net_save_index_handler,
-        .method = HTTP_GET,
-    };
-    httpd_register_uri_handler(this, &net_save_index);
-
     httpd_uri_t system_reset_index = {
         .uri = "/v1/system/reset",
         .handler = system_reset_index_handler,
@@ -118,6 +118,23 @@ static void http_server_register_routes(void)
         .user_ctx = &file_server
     };
     httpd_register_uri_handler(this, &file_get);
+}
+
+esp_err_t net_post_handler(httpd_req_t *req)
+{
+    int len = 512;
+    char content[512];
+    net_app_queue_msg_t msg;
+    httpd_req_recv(req, content, len);
+
+    msg.id = NET_APP_MSG_ID_SAVE_SETTINGS;
+    net_app_settings_from_json(&msg.data.settings, content);
+    net_app_send_msg(&msg);
+
+    httpd_resp_set_status(req, HTTPD_200);
+    httpd_resp_send(req, NULL, 0);
+
+    return ESP_OK;
 }
 
 esp_err_t net_wifi_post_handler(httpd_req_t *req)
@@ -190,19 +207,6 @@ esp_err_t net_mqtt_index_handler(httpd_req_t *req)
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     httpd_resp_sendstr(req, content);
-
-    return ESP_OK;
-}
-
-esp_err_t net_save_index_handler(httpd_req_t *req)
-{
-    net_app_queue_msg_t msg = {
-        .id = NET_APP_MSG_ID_SAVE_SETTINGS,
-    };
-    net_app_send_msg(&msg);
-
-    httpd_resp_set_status(req, HTTPD_200);
-    httpd_resp_send(req, NULL, 0);
 
     return ESP_OK;
 }
