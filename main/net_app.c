@@ -20,7 +20,7 @@
 #include "tasks_common.h"
 #include "dtos.h"
 
-#define SETTINGS_FILENAME "/web/settings.json"
+#define SETTINGS_FILENAME "/web/net_settings.json"
 #define EVT_TIMEOUT 15000
 #define BIT_WIFI_CONNECTED BIT0
 #define BIT_MQTT_CONNECTED BIT1
@@ -66,7 +66,7 @@ static void net_app_start_http_server(httpd_config_t *cfg);
 static void net_app_start_wifi_ap(wifi_ap_config_t *cfg);
 static void net_app_start_wifi_sta(wifi_sta_config_t *cfg);
 static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg);
-static void net_app_save_settings(void);
+static void net_app_save_settings(net_app_settings_t *settings);
 static void net_app_load_settings(void);
 static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event);
@@ -167,7 +167,7 @@ static void net_app_task(void *pvParameter)
                 break;
             case NET_APP_MSG_ID_SAVE_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SAVE_SETTINGS");
-                net_app_save_settings();
+                net_app_save_settings(&msg.data.settings);
                 break;
             case NET_APP_MSG_ID_LOAD_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_LOAD_SETTINGS");
@@ -227,13 +227,13 @@ static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg)
     xEventGroupWaitBits(this.event_group, BIT_MQTT_CONNECTED, false, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
-static void net_app_save_settings()
+static void net_app_save_settings(net_app_settings_t *settings)
 {
     FILE *fd = fopen(SETTINGS_FILENAME, "w");
     if (fd != NULL)
     {
         char data[512];
-        net_app_settings_to_json(data, &this.settings);
+        net_app_settings_to_json(data, settings);
         fprintf(fd, data);
     }
     else
