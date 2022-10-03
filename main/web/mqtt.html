@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title> ESP32 MQTT Manager </title>
+</head>
+
+<body>
+
+    <body>
+        <div class="prov-page">
+            <div class="form">
+                <div class="prov">
+                    <div class="prov-header">
+                        <h3>MQTT Manager</h3>
+                        <p>Please, inform your MQTT credentials</p>
+                    </div>
+                </div>
+                <form class="prov-form">
+                    <input type="text" placeholder="host" id="host" value="test.mosquitto.org" />
+                    <input type="number" placeholder="port" id="port" value="1883"/>
+                    <input type="text" placeholder="user" id="username" />
+                    <input type="password" placeholder="password" id="password" />
+                    <select id="transport">
+                        <option value="1">TCP (mqtt)</option>
+                        <option value="2">SSL (mqtts)</option>
+                        <option value="3">Websocket (ws)</option>
+                        <option value="4">Websocket Secure(wss)</option>
+                    </select>
+                </form>
+                <button id="btMqttCn">connect</button>
+            </div>
+        </div>
+    </body>
+</body>
+<script src="./js/app.js" type="module"></script>
+
+</html>

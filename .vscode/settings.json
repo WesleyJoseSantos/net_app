@@ -1,0 +1,22 @@
+{
+    "idf.flashType": "UART",
+    "idf.portWin": "COM9",
+    "idf.adapterTargetName": "esp32",
+    "files.associations": {
+        "http.h": "c",
+        "esp_vfs_fat.h": "c",
+        "http_server.h": "c",
+        "config.h": "c",
+        "datalogger.h": "c",
+        "task.h": "c",
+        "http_parser.h": "c",
+        "freertos.h": "c",
+        "esp_compiler.h": "c",
+        "nvs_flash.h": "c",
+        "main.h": "c",
+        "event_groups.h": "c",
+        "stdio.h": "c",
+        "thread": "c",
+        "mqtt_client.h": "c"
+    },
+}

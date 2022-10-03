@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title> ESP32 WiFi Manager </title>
+</head>
+
+<body>
+    <div class="prov-page">
+        <div class="form">
+            <div class="prov">
+                <div class="prov-header">
+                    <h3>WiFi Manager</h3>
+                    <p>Please, insert WiFi credentials</p>
+                </div>
+            </div>
+            <form class="prov-form">
+                <input type="text" placeholder="ssid" id="ssid" />
+                <input type="password" placeholder="senha" id="password" />
+            </form>
+            <button id="btWifiCn">connect</button>
+        </div>
+    </div>
+</body>
+<script src="./js/app.js" type="module"></script>
+
+</html>
