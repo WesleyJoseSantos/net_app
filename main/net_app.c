@@ -73,7 +73,7 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event);
 
 void net_app_start()
 {
-    ESP_LOGI(TAG, "Start Network Application");
+    ESP_LOGI(TAG, "Network Application Start");
     esp_log_level_set("wifi", ESP_LOG_NONE);
     this.queue = xQueueCreate(5, sizeof(net_app_queue_msg_t));
     xTaskCreatePinnedToCore(net_app_task, "net_app_task", NET_APP_TASK_STACK_SIZE, NULL, NET_APP_TASK_PRIORITY, this.task, NET_APP_TASK_CORE_ID);
