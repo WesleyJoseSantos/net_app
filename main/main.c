@@ -13,10 +13,12 @@
 
 #define TIMEOUT 5000
 
-// static const char *TAG = "main";
+static const char *TAG = "main";
 
 void app_main(void)
 {
+    ESP_LOGI(TAG, "Main Application Start");
+
     net_app_queue_msg_t msg_start_wifi_ap = NET_APP_MSG_START_WIFI_AP();
     net_app_queue_msg_t msg_start_http_server = NET_APP_MSG_START_HTTP_SERVER();
     net_app_queue_msg_t msg_load_settings = NET_APP_MSG_LOAD_SETTINGS();
