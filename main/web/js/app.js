@@ -28,7 +28,7 @@ function init() {
     if(loadedNet) net = loadedNet
     if(btWifi) btWifi.onclick = () => document.location = '/wifi.html'
     if(btMqtt) btMqtt.onclick = () => document.location = '/mqtt.html'
-    if(btSave) btSave.onclick = () => client.request('POST', route.net, net)
+    if(btSave) btSave.onclick = btSave_onclick
     if(btResetDev) btResetDev.onclick = () => client.request('GET', route.reset)
     if(btWifiCn) btWifiCn.onclick = btWifiCn_onclick
     if(btMqttCn) btMqttCn.onclick = btMqttCn_onclick
@@ -77,6 +77,20 @@ async function btMqttCn_onclick() {
         $('btMqttCn').onclick = buttonCn_onclick
         $('btMqttCn').textContent = 'connect'
     }
+}
+
+async function btSave_onclick() {
+    if(loadData('net') == null){
+        alert('Data not exists!')
+    } else {
+        var result = await client.request('POST', route.net, net)
+    
+        if(result.msg == 'OK') {
+            alert('Data saved!')
+        } else {
+            alert('Error when saving data!')
+        }
+    }    
 }
 
 function saveData(key, data)
