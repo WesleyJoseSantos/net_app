@@ -1,6 +1,6 @@
 {
     "idf.flashType": "UART",
-    "idf.portWin": "COM9",
+    "idf.portWin": "COM15",
     "idf.adapterTargetName": "esp32",
     "files.associations": {
         "http.h": "c",
@@ -17,6 +17,7 @@
         "event_groups.h": "c",
         "stdio.h": "c",
         "thread": "c",
-        "mqtt_client.h": "c"
+        "mqtt_client.h": "c",
+        "cjson.h": "c"
     },
 }
