@@ -22,6 +22,8 @@
 
 #define HOMEPAGE "/index.html"
 
+#define STATUS_MSG_OK "{\"msg\":\"OK\"}"
+
 #define FILE_SERVER_BUFSIZE 1023
 #define WIFI_TIMEOUT 15000
 #define MQTT_TIMEOUT 5000
@@ -132,7 +134,8 @@ esp_err_t net_post_handler(httpd_req_t *req)
     net_app_send_msg(&msg);
 
     httpd_resp_set_status(req, HTTPD_200);
-    httpd_resp_send(req, NULL, 0);
+    httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+    httpd_resp_send(req, STATUS_MSG_OK, 12);
 
     return ESP_OK;
 }

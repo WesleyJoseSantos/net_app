@@ -14,9 +14,11 @@
 
 #include <stdio.h>
 #include "nvs_flash.h"
+#include "esp_spiffs.h"
+#include "esp_log.h"
+
 #include "net_app.h"
 
-#include "esp_spiffs.h"
 
 #define SPIFFS_CFG() {                  \
     .base_path = "/web",                \
