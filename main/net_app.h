@@ -58,6 +58,7 @@ typedef struct net_app_wifi_sta_info
 typedef struct net_app_wifi_ap_info
 {
     net_app_wifi_conn_t conn;   ///! WiFi connection info
+    char ssid[32];              ///! WiFi ap ssid
     wifi_sta_list_t sta_list;   ///! List of stations associated with the ESP32 Soft-AP
 } net_app_wifi_ap_info_t;
 

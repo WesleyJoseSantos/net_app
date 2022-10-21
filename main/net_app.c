@@ -202,6 +202,7 @@ static void net_app_start_wifi_ap(wifi_ap_config_t *cfg)
 {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
+    memcpy(this.wifi.ap.info.ssid, cfg->ssid, sizeof(this.wifi.ap.info.ssid));
 }
 
 static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
