@@ -104,20 +104,13 @@ void net_app_wifi_get_info(wifi_interface_t wifi_interface, net_app_wifi_info_t 
     switch (wifi_interface)
     {
     case WIFI_IF_STA:
-    {
-        wifi_ap_record_t wifi_ap_record;
-        esp_wifi_sta_get_ap_info(&wifi_ap_record);
+        esp_wifi_sta_get_ap_info(&this.wifi.sta.info.ap_record);
         *info = (net_app_wifi_info_t)this.wifi.sta.info;
-        info->sta.conn.rssi = wifi_ap_record.rssi;
         break;
-    }
     case WIFI_IF_AP:
-    {
-        wifi_sta_list_t wifi_sta_list;
-        esp_wifi_ap_get_sta_list(&wifi_sta_list);
+        esp_wifi_ap_get_sta_list(&this.wifi.ap.info.sta_list);
         *info = (net_app_wifi_info_t)this.wifi.ap.info;
         break;
-    }
     default:
         break;
     }
@@ -209,7 +202,6 @@ static void net_app_start_wifi_ap(wifi_ap_config_t *cfg)
 {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
-    strcpy(this.wifi.ap.info.conn.ssid, (char *)cfg->ssid);
 }
 
 static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
@@ -224,7 +216,6 @@ static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
     ESP_LOGI(TAG, "password: %s", cfg->password);
     if (this.wifi.sta.started)
         esp_wifi_connect();
-    strcpy(this.wifi.sta.info.conn.ssid, (char *)cfg->ssid);
     xEventGroupWaitBits(this.event_group, BIT_WIFI_CONNECTED, false, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 

@@ -36,10 +36,10 @@ void wifi_sta_config_to_json(char *json_str, wifi_sta_config_t *data)
 void net_app_wifi_sta_info_to_json(char *json_str, net_app_wifi_sta_info_t *data)
 {
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "ssid", data->conn.ssid);
     cJSON_AddStringToObject(json, "ip", data->conn.ip);
     cJSON_AddBoolToObject(json, "status", data->conn.status);
-    cJSON_AddNumberToObject(json, "rssi", data->conn.rssi);
+    cJSON_AddStringToObject(json, "ssid", (char*)data->ap_record.ssid);
+    cJSON_AddNumberToObject(json, "rssi", data->ap_record.rssi);
     cJSON_ToString(json_str, json);
 }
 

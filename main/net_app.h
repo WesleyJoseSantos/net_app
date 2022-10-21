@@ -37,9 +37,7 @@ typedef enum net_app_msg_id
  */
 typedef struct net_app_wifi_conn
 {
-    char ssid[32]; ///!< WiFi Connection SSID
     char ip[16];   ///!< WiFi Connection IP
-    uint8_t rssi;  ///!< WiFi Connection rssi
     bool status;   ///!< WiFi Conncetion Status
 } net_app_wifi_conn_t;
 
@@ -50,6 +48,7 @@ typedef struct net_app_wifi_conn
 typedef struct net_app_wifi_sta_info
 {
     net_app_wifi_conn_t conn;   ///! WiFi connection info
+    wifi_ap_record_t ap_record; ///! Description of a WiFi AP
 } net_app_wifi_sta_info_t;
 
 /**
@@ -59,7 +58,7 @@ typedef struct net_app_wifi_sta_info
 typedef struct net_app_wifi_ap_info
 {
     net_app_wifi_conn_t conn;   ///! WiFi connection info
-    int sta_count;              ///! Stations connected to ap count
+    wifi_sta_list_t sta_list;   ///! List of stations associated with the ESP32 Soft-AP
 } net_app_wifi_ap_info_t;
 
 /**
