@@ -26,17 +26,24 @@
 #define BIT_MQTT_CONNECTED BIT1
 #define BIT_MSG_PROCESSING_DONE BIT2
 
-typedef struct wifi_data
+typedef struct wifi_ap_data
 {
     bool started;
-    net_app_wifi_conn_t conn;
     esp_netif_t *netif;
-} wifi_data_t;
+    net_app_wifi_ap_info_t info;
+} wifi_ap_data_t;
+
+typedef struct wifi_sta_data
+{
+    bool started;
+    esp_netif_t *netif;
+    net_app_wifi_sta_info_t info;
+} wifi_sta_data_t;
 
 typedef struct wifi
 {
-    wifi_data_t ap;
-    wifi_data_t sta;
+    wifi_ap_data_t ap;
+    wifi_sta_data_t sta;
 } wifi_t;
 
 typedef struct mqtt
@@ -92,16 +99,25 @@ void net_app_wait_msg_processing(int timeout)
     xEventGroupWaitBits(this.event_group, BIT_MSG_PROCESSING_DONE, clear_on_exit, wait_for_all_bits, timeout / portTICK_PERIOD_MS);
 }
 
-void net_app_wifi_get_conn(wifi_interface_t wifi_interface, net_app_wifi_conn_t *wifi_conn)
+void net_app_wifi_get_info(wifi_interface_t wifi_interface, net_app_wifi_info_t *info)
 {
     switch (wifi_interface)
     {
     case WIFI_IF_STA:
-        *wifi_conn = this.wifi.sta.conn;
+    {
+        wifi_ap_record_t wifi_ap_record;
+        esp_wifi_sta_get_ap_info(&wifi_ap_record);
+        *info = (net_app_wifi_info_t)this.wifi.sta.info;
+        info->sta.conn.rssi = wifi_ap_record.rssi;
         break;
+    }
     case WIFI_IF_AP:
-        *wifi_conn = this.wifi.ap.conn;
+    {
+        wifi_sta_list_t wifi_sta_list;
+        esp_wifi_ap_get_sta_list(&wifi_sta_list);
+        *info = (net_app_wifi_info_t)this.wifi.ap.info;
         break;
+    }
     default:
         break;
     }
@@ -193,14 +209,14 @@ static void net_app_start_wifi_ap(wifi_ap_config_t *cfg)
 {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
-    strcpy(this.wifi.ap.conn.ssid, (char *)cfg->ssid);
+    strcpy(this.wifi.ap.info.conn.ssid, (char *)cfg->ssid);
 }
 
 static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
 {
     xEventGroupClearBits(this.event_group, BIT_WIFI_CONNECTED);
     memcpy(&this.settings.wifi_sta, cfg, sizeof(*cfg));
-    if (this.wifi.sta.conn.status)
+    if (this.wifi.sta.info.conn.status)
         esp_wifi_disconnect();
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, (wifi_config_t *)cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -208,7 +224,7 @@ static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
     ESP_LOGI(TAG, "password: %s", cfg->password);
     if (this.wifi.sta.started)
         esp_wifi_connect();
-    strcpy(this.wifi.sta.conn.ssid, (char *)cfg->ssid);
+    strcpy(this.wifi.sta.info.conn.ssid, (char *)cfg->ssid);
     xEventGroupWaitBits(this.event_group, BIT_WIFI_CONNECTED, false, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
@@ -288,11 +304,11 @@ static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_
             break;
         case WIFI_EVENT_AP_STACONNECTED:
             ESP_LOGI(TAG, "WIFI_EVENT_AP_STACONNECTED");
-            this.wifi.ap.conn.status = true;
+            this.wifi.ap.info.conn.status = true;
             break;
         case WIFI_EVENT_AP_STADISCONNECTED:
             ESP_LOGI(TAG, "WIFI_EVENT_AP_STADISCONNECTED");
-            this.wifi.ap.conn.status = false;
+            this.wifi.ap.info.conn.status = false;
             break;
         case WIFI_EVENT_STA_START:
             ESP_LOGI(TAG, "WIFI_EVENT_STA_START");
@@ -305,11 +321,11 @@ static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_
             break;
         case WIFI_EVENT_STA_CONNECTED:
             ESP_LOGI(TAG, "WIFI_EVENT_STA_CONNECTED");
-            this.wifi.sta.conn.status = true;
+            this.wifi.sta.info.conn.status = true;
             break;
         case WIFI_EVENT_STA_DISCONNECTED:
             ESP_LOGI(TAG, "WIFI_EVENT_STA_DISCONNECTED");
-            this.wifi.sta.conn.status = false;
+            this.wifi.sta.info.conn.status = false;
             xEventGroupClearBits(this.event_group, BIT_WIFI_CONNECTED);
             break;
         default:
@@ -324,7 +340,7 @@ static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_
         {
             ESP_LOGI(TAG, "IP_EVENT_STA_GOT_IP");
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-            sprintf(this.wifi.sta.conn.ip, IPSTR, IP2STR(&event->ip_info.ip));
+            sprintf(this.wifi.sta.info.conn.ip, IPSTR, IP2STR(&event->ip_info.ip));
             xEventGroupSetBits(this.event_group, BIT_WIFI_CONNECTED);
             break;
         }
@@ -332,7 +348,7 @@ static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_
         {
             ESP_LOGI(TAG, "IP_EVENT_AP_STAIPASSIGNED");
             ip_event_ap_staipassigned_t *event = (ip_event_ap_staipassigned_t *)event_data;
-            sprintf(this.wifi.ap.conn.ip, IPSTR, IP2STR(&event->ip));
+            sprintf(this.wifi.ap.info.conn.ip, IPSTR, IP2STR(&event->ip));
             break;
         }
         default:

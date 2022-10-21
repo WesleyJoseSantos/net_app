@@ -153,8 +153,8 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
     net_app_send_msg(&msg);
     net_app_wait_msg_processing(WIFI_TIMEOUT);
 
-    net_app_wifi_get_conn(WIFI_IF_STA, &wifi_conn);
-    net_app_wifi_conn_to_json(content, &wifi_conn);
+    net_app_wifi_get_info(WIFI_IF_STA, &wifi_conn);
+    net_app_wifi_sta_info_to_json(content, &wifi_conn);
     char *status = wifi_conn.status ? HTTPD_200 : HTTPD_408;
     
     httpd_resp_set_status(req, status);
@@ -167,9 +167,9 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
 esp_err_t net_wifi_index_handler(httpd_req_t *req)
 {
     char content[256];
-    net_app_wifi_conn_t wifi_conn;
-    net_app_wifi_get_conn(WIFI_IF_STA, &wifi_conn);
-    net_app_wifi_conn_to_json(content, &wifi_conn);
+    net_app_wifi_sta_info_t info;
+    net_app_wifi_get_info(WIFI_IF_STA, &info);
+    net_app_wifi_sta_info_to_json(content, &info);
 
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
