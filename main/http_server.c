@@ -22,7 +22,8 @@
 
 #define HOMEPAGE "/index.html"
 
-#define STATUS_MSG_OK "{\"msg\":\"OK\"}"
+#define STATUS_MSG "{\"err\":%d,\"msg\":\"%s\"}"
+#define STATUS_MSG_OK "{\"err\":0,\"msg\":\"OK\"}"
 
 #define FILE_SERVER_BUFSIZE 1023
 #define WIFI_TIMEOUT 15000
@@ -37,6 +38,7 @@ static void http_server_register_routes(void);
 static esp_err_t net_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_index_handler(httpd_req_t *req);
+static esp_err_t net_wifi_ssids_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_post_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_index_handler(httpd_req_t *req);
 static esp_err_t file_get_handler(httpd_req_t *req);
@@ -92,6 +94,13 @@ static void http_server_register_routes(void)
     };
     httpd_register_uri_handler(this, &net_wifi_index);
 
+    httpd_uri_t net_wifi_ssids_index = {
+        .uri = "/v1/net/wifi/ssids",
+        .handler = net_wifi_ssids_handler,
+        .method = HTTP_GET,
+    };
+    httpd_register_uri_handler(this, &net_wifi_ssids_index);
+
     httpd_uri_t net_mqtt_post = {
         .uri = "/v1/net/mqtt",
         .handler = net_mqtt_post_handler,
@@ -117,7 +126,7 @@ static void http_server_register_routes(void)
         .uri = "/*",
         .handler = file_get_handler,
         .method = HTTP_GET,
-        .user_ctx = &file_server
+        .user_ctx = &file_server,
     };
     httpd_register_uri_handler(this, &file_get);
 }
@@ -145,7 +154,7 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
     int len = 256;
     char content[256];
     net_app_queue_msg_t msg;
-    net_app_wifi_conn_t wifi_conn;
+    net_app_wifi_info_t info;
     httpd_req_recv(req, content, len);
 
     msg.id = NET_APP_MSG_ID_START_WIFI_STA;
@@ -153,9 +162,9 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
     net_app_send_msg(&msg);
     net_app_wait_msg_processing(WIFI_TIMEOUT);
 
-    net_app_wifi_get_conn(WIFI_IF_STA, &wifi_conn);
-    net_app_wifi_conn_to_json(content, &wifi_conn);
-    char *status = wifi_conn.status ? HTTPD_200 : HTTPD_408;
+    net_app_wifi_get_info(WIFI_IF_STA, &info);
+    net_app_wifi_sta_info_to_json(content, &info.sta);
+    char *status = info.sta.conn.status ? HTTPD_200 : HTTPD_408;
     
     httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
@@ -167,15 +176,44 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
 esp_err_t net_wifi_index_handler(httpd_req_t *req)
 {
     char content[256];
-    net_app_wifi_conn_t wifi_conn;
-    net_app_wifi_get_conn(WIFI_IF_STA, &wifi_conn);
-    net_app_wifi_conn_to_json(content, &wifi_conn);
+    net_app_wifi_info_t info;
+    net_app_wifi_get_info(WIFI_IF_STA, &info);
+    net_app_wifi_sta_info_to_json(content, &info.sta);
 
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     httpd_resp_sendstr(req, content);
 
     return ESP_OK;
+}
+
+esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
+{
+    esp_err_t err;
+    char content[512];
+    uint16_t list_siz = 10;
+    wifi_ap_record_t wifi_ap_record[list_siz];
+    memset(&wifi_ap_record, 0, sizeof(wifi_ap_record_t) * list_siz);
+
+    err = esp_wifi_scan_start(NULL, true);
+    if(err == ESP_OK) err = esp_wifi_scan_get_ap_records(&list_siz, wifi_ap_record);
+
+    if(err == ESP_OK)
+    {
+        wifi_ap_record_to_json(content, wifi_ap_record, list_siz);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_set_status(req, HTTPD_200);
+        httpd_resp_sendstr(req, content);
+        return ESP_OK;
+    }
+    else
+    {
+        sprintf(content, STATUS_MSG, err, esp_err_to_name(err));
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_set_status(req, HTTPD_500);
+        httpd_resp_sendstr(req, content);
+        return ESP_FAIL;
+    }
 }
 
 esp_err_t net_mqtt_post_handler(httpd_req_t *req)

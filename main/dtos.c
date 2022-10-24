@@ -33,13 +33,26 @@ void wifi_sta_config_to_json(char *json_str, wifi_sta_config_t *data)
     cJSON_ToString(json_str, json);
 }
 
-void net_app_wifi_conn_to_json(char *json_str, net_app_wifi_conn_t *data)
+void net_app_wifi_sta_info_to_json(char *json_str, net_app_wifi_sta_info_t *data)
 {
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "ssid", data->ssid);
-    cJSON_AddStringToObject(json, "ip", data->ip);
-    cJSON_AddBoolToObject(json, "status", data->status);
+    cJSON_AddStringToObject(json, "ip", data->conn.ip);
+    cJSON_AddBoolToObject(json, "status", data->conn.status);
+    cJSON_AddStringToObject(json, "ssid", (char*)data->ap_record.ssid);
+    cJSON_AddNumberToObject(json, "rssi", data->ap_record.rssi);
     cJSON_ToString(json_str, json);
+}
+
+void wifi_ap_record_to_json(char *json_str, wifi_ap_record_t *data, size_t size)
+{
+    int len = sprintf(json_str, "[");
+    for (int i = 0; i < size; i++)
+    {
+        len += sprintf(&json_str[len], 
+                       "{\"ssid\":\"%s\",\"rssi\":%d, \"authmode\":%d},", 
+                       data[i].ssid, data[i].rssi, data[i].authmode);
+    }
+    json_str[len - 1] = ']';
 }
 
 void esp_mqtt_client_config_from_json(esp_mqtt_client_config_t *data, char *json_str)

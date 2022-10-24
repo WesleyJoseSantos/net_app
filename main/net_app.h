@@ -39,8 +39,38 @@ typedef struct net_app_wifi_conn
 {
     char ip[16];   ///!< WiFi Connection IP
     bool status;   ///!< WiFi Conncetion Status
-    char ssid[32]; ///!< WiFi Connection SSID
 } net_app_wifi_conn_t;
+
+/**
+ * @brief WiFi station info
+ * 
+ */
+typedef struct net_app_wifi_sta_info
+{
+    net_app_wifi_conn_t conn;   ///! WiFi connection info
+    wifi_ap_record_t ap_record; ///! Description of a WiFi AP
+} net_app_wifi_sta_info_t;
+
+/**
+ * @brief WiFi access point info
+ * 
+ */
+typedef struct net_app_wifi_ap_info
+{
+    net_app_wifi_conn_t conn;   ///! WiFi connection info
+    char ssid[32];              ///! WiFi ap ssid
+    wifi_sta_list_t sta_list;   ///! List of stations associated with the ESP32 Soft-AP
+} net_app_wifi_ap_info_t;
+
+/**
+ * @brief WiFi interfaces info
+ * 
+ */
+typedef union net_app_wifi_info
+{
+    net_app_wifi_sta_info_t sta;
+    net_app_wifi_ap_info_t ap;
+} net_app_wifi_info_t;
 
 /**
  * @brief Network app settings
@@ -97,12 +127,12 @@ BaseType_t net_app_send_msg(net_app_queue_msg_t *msg);
 void net_app_wait_msg_processing(int timeout);
 
 /**
- * @brief Get WiFi interface connection information
+ * @brief Get WiFi interface information
  *
  * @param wifi_interface WiFi interface
- * @param wifi_conn Buffer to store wifi connection information
+ * @param wifi_conn Buffer to store wifi interface information
  */
-void net_app_wifi_get_conn(wifi_interface_t wifi_interface, net_app_wifi_conn_t *wifi_conn);
+void net_app_wifi_get_info(wifi_interface_t wifi_interface, net_app_wifi_info_t *info);
 
 /**
  * @brief Get MQTT connection status
