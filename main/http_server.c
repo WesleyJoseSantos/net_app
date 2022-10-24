@@ -126,7 +126,7 @@ static void http_server_register_routes(void)
         .uri = "/*",
         .handler = file_get_handler,
         .method = HTTP_GET,
-        .user_ctx = &file_server
+        .user_ctx = &file_server,
     };
     httpd_register_uri_handler(this, &file_get);
 }
@@ -191,15 +191,12 @@ esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
 {
     esp_err_t err;
     char content[512];
-    size_t list_siz = 10;
-    wifi_mode_t mode;
+    uint16_t list_siz = 10;
     wifi_ap_record_t wifi_ap_record[list_siz];
     memset(&wifi_ap_record, 0, sizeof(wifi_ap_record_t) * list_siz);
 
-    err = esp_wifi_start();
-    if(err == ESP_OK) err = esp_wifi_scan_start(NULL, true);
-    if(err == ESP_OK) err = esp_wifi_scan_get_ap_records(list_siz, &wifi_ap_record);
-    if(err == ESP_OK) err = esp_wifi_scan_get_ap_num(&list_siz);
+    err = esp_wifi_scan_start(NULL, true);
+    if(err == ESP_OK) err = esp_wifi_scan_get_ap_records(&list_siz, wifi_ap_record);
 
     if(err == ESP_OK)
     {
