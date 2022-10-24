@@ -43,6 +43,18 @@ void net_app_wifi_sta_info_to_json(char *json_str, net_app_wifi_sta_info_t *data
     cJSON_ToString(json_str, json);
 }
 
+void wifi_ap_record_to_json(char *json_str, wifi_ap_record_t *data, size_t size)
+{
+    int len = sprintf(json_str, "[");
+    for (int i = 0; i < size; i++)
+    {
+        len += sprintf(&json_str[len], 
+                       "{\"ssid\":\"%s\",\"rssi\":%d, \"authmode\":%d},", 
+                       data[i].ssid, data[i].rssi, data[i].authmode);
+    }
+    json_str[len - 1] = ']';
+}
+
 void esp_mqtt_client_config_from_json(esp_mqtt_client_config_t *data, char *json_str)
 {
     cJSON *json = cJSON_Parse(json_str);

@@ -21,6 +21,8 @@ void wifi_sta_config_to_json(char *json_str, wifi_sta_config_t *data);
 
 void net_app_wifi_sta_info_to_json(char *json_str, net_app_wifi_sta_info_t *data);
 
+void wifi_ap_record_to_json(char *json_str, wifi_ap_record_t *data, size_t size);
+
 void esp_mqtt_client_config_from_json(esp_mqtt_client_config_t *data, char *json_str);
 void esp_mqtt_client_config_to_json(char *json_str, esp_mqtt_client_config_t *data);
 
