@@ -55,6 +55,36 @@ void wifi_ap_record_to_json(char *json_str, wifi_ap_record_t *data, size_t size)
     json_str[len - 1] = ']';
 }
 
+void net_app_ntp_config_from_json(net_app_ntp_config_t *data, char*json_str)
+{
+    cJSON *json = cJSON_Parse(json_str);
+    cJSON *op_mode = cJSON_GetObjectItem(json, "op_mode");
+    cJSON *sync_interval = cJSON_GetObjectItem(json, "sync_interval");
+    cJSON *sync_mode = cJSON_GetObjectItem(json, "sync_mode");
+    cJSON *server1 = cJSON_GetObjectItem(json, "server1");
+    cJSON *server2 = cJSON_GetObjectItem(json, "server2");
+    cJSON *server3 = cJSON_GetObjectItem(json, "server3");
+    if(op_mode) data->op_mode = op_mode->valueint;
+    if(sync_interval) data->sync_interval = op_mode->valueint;
+    if(sync_mode) data->sync_mode = sync_mode->valueint;
+    if(server1 && server1->valuestring[0] != '\0') strncpy(data->server1, server1->valuestring, sizeof(data->server1));
+    if(server2 && server2->valuestring[0] != '\0') strncpy(data->server2, server2->valuestring, sizeof(data->server2));
+    if(server3 && server3->valuestring[0] != '\0') strncpy(data->server3, server3->valuestring, sizeof(data->server3));
+    cJSON_Delete(json);
+}
+
+void net_app_ntp_config_to_json(char *json_str, net_app_ntp_config_t *data)
+{
+    cJSON *json = cJSON_CreateObject();
+    cJSON_AddNumberToOBject(json, "op_mode", data->op_mode);
+    cJSON_AddNumberToOBject(json, "sync_interval", data->sync_interval);
+    cJSON_AddNumberToOBject(json, "sync_mode", data->sync_mode);
+    cJSON_AddStringToObject(json, "server1", data->server1);
+    cJSON_AddStringToObject(json, "server2", data->server2);
+    cJSON_AddStringToObject(json, "server3", data->server3);
+    cJSON_ToString(json_str, json);
+}
+
 void esp_mqtt_client_config_from_json(esp_mqtt_client_config_t *data, char *json_str)
 {
     cJSON *json = cJSON_Parse(json_str);
@@ -90,12 +120,16 @@ void net_app_settings_from_json(net_app_settings_t *data, char *json_str)
 {
     cJSON *json = cJSON_Parse(json_str);
     cJSON *wifi = cJSON_GetObjectItem(json, "wifi");
+    cJSON *ntp = cJSON_GetObjectItem(json, "ntp");
     cJSON *mqtt = cJSON_GetObjectItem(json, "mqtt");
     char *wifi_json = cJSON_Print(wifi);
+    char *ntp_json = cJSON_Print(ntp);
     char *mqtt_json = cJSON_Print(mqtt);
     wifi_sta_config_from_json(&data->wifi_sta, wifi_json);
+    net_app_ntp_config_from_json(&data->ntp, ntp_json);
     esp_mqtt_client_config_from_json(&data->mqtt, mqtt_json);
     free(wifi_json);
+    free(ntp_json);
     free(mqtt_json);
     cJSON_Delete(json);
 }
@@ -103,13 +137,17 @@ void net_app_settings_from_json(net_app_settings_t *data, char *json_str)
 void net_app_settings_to_json(char *json_str, net_app_settings_t *data)
 {
     char wifi_json[256];
+    char ntp_json[256];
     char mqtt_json[256];
     wifi_sta_config_to_json(wifi_json, &data->wifi_sta);
+    net_app_ntp_config_to_json(ntp_json, &data->ntp);
     esp_mqtt_client_config_to_json(mqtt_json, &data->mqtt);
     cJSON *json = cJSON_CreateObject();
     cJSON *wifi = cJSON_Parse(wifi_json);
+    cJSON *ntp = cJSON_Parse(ntp_json);
     cJSON *mqtt = cJSON_Parse(mqtt_json);
     cJSON_AddItemToObject(json, "wifi", wifi);
+    cJSON_AddItemToObject(json, "ntp", ntp);
     cJSON_AddItemToObject(json, "mqtt", mqtt);
     cJSON_ToString(json_str, json);
 }
