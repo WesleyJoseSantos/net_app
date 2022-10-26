@@ -76,9 +76,9 @@ void net_app_ntp_config_from_json(net_app_ntp_config_t *data, char*json_str)
 void net_app_ntp_config_to_json(char *json_str, net_app_ntp_config_t *data)
 {
     cJSON *json = cJSON_CreateObject();
-    cJSON_AddNumberToOBject(json, "op_mode", data->op_mode);
-    cJSON_AddNumberToOBject(json, "sync_interval", data->sync_interval);
-    cJSON_AddNumberToOBject(json, "sync_mode", data->sync_mode);
+    cJSON_AddNumberToObject(json, "op_mode", data->op_mode);
+    cJSON_AddNumberToObject(json, "sync_interval", data->sync_interval);
+    cJSON_AddNumberToObject(json, "sync_mode", data->sync_mode);
     cJSON_AddStringToObject(json, "server1", data->server1);
     cJSON_AddStringToObject(json, "server2", data->server2);
     cJSON_AddStringToObject(json, "server3", data->server3);
