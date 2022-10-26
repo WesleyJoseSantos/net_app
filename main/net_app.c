@@ -10,6 +10,8 @@
  */
 
 #include <sys/stat.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -24,6 +26,7 @@
 #define EVT_TIMEOUT 15000
 #define BIT_WIFI_CONNECTED BIT0
 #define BIT_MQTT_CONNECTED BIT1
+#define BIT_NTP_SYNC_OK BIT2
 #define BIT_MSG_PROCESSING_DONE BIT2
 
 typedef struct wifi_ap_data
@@ -72,6 +75,7 @@ static void net_app_task(void *pvParameter);
 static void net_app_start_http_server(httpd_config_t *cfg);
 static void net_app_start_wifi_ap(wifi_ap_config_t *cfg);
 static void net_app_start_wifi_sta(wifi_sta_config_t *cfg);
+static void net_app_start_ntp(net_app_ntp_config_t *cfg);
 static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg);
 static void net_app_save_settings(net_app_settings_t *settings);
 static void net_app_load_settings(void);
@@ -165,6 +169,10 @@ static void net_app_task(void *pvParameter)
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_WIFI_STA");
                 net_app_start_wifi_sta(&msg.data.wifi_sta);
                 break;
+            case NET_APP_MSG_ID_START_NTP:
+                ESP_LOGI(TAG, "NET_APP_MSG_ID_START_NTP");
+                net_app_ntp_start(&msg.data.ntp);
+                break;
             case NET_APP_MSG_ID_START_MQTT:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_MQTT");
                 net_app_start_mqtt(&msg.data.mqtt);
@@ -218,6 +226,36 @@ static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
     if (this.wifi.sta.started)
         esp_wifi_connect();
     xEventGroupWaitBits(this.event_group, BIT_WIFI_CONNECTED, false, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
+}
+
+static void net_app_ntp_start(net_app_ntp_config_t *cfg)
+{
+    xEventGroupClearBits(this.event_group, BIT_NTP_SYNC_OK);
+    sntp_stop();
+    if(cfg->sync_interval != 0)
+    {
+        sntp_set_sync_interval(cfg->sync_interval);
+        sntp_setoperatingmode(cfg->op_mode);
+        sntp_setserver(0, cfg->server1);
+
+        if(cfg->server2 && cfg->server2[0] != '\0')
+        {
+            sntp_setserver(1, cfg->server2);
+        }
+
+        if(cfg->server3 && cfg->server3[0] != '\0')
+        {
+            sntp_setserver(1, cfg->server3);
+        }
+
+        sntp_set_sync_mode(cfg->sync_mode);
+        sntp_set_time_sync_notification_cb(net_app_ntp_sync_notification_cb);
+        sntp_init();
+
+        setenv("TZ", "<-03>3", 1);
+        tzset();
+    }
+    xEventGroupWaitBits(this.event_group, BIT_NTP_SYNC_OK, true, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
 static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg)
@@ -382,4 +420,9 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event)
         break;
     }
     return ESP_OK;
+}
+
+void net_app_ntp_sync_notification_cb()
+{
+    xEventGroupSetBits(this.event_group, BIT_NTP_SYNC_OK);
 }

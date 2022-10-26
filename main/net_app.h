@@ -15,6 +15,7 @@
 #include "esp_wifi.h"
 #include "mqtt_client.h"
 #include "esp_http_server.h"
+#include "esp_sntp.h"
 
 /**
  * @brief Network Message ID
@@ -25,6 +26,7 @@ typedef enum net_app_msg_id
     NET_APP_MSG_ID_START_HTTP_SERVER, ///!< Request to start http server
     NET_APP_MSG_ID_START_WIFI_AP,     ///!< Request to start wifi ap
     NET_APP_MSG_ID_START_WIFI_STA,    ///!< Request to start wifi sta
+    NET_APP_MSG_ID_START_NTP,         ///!< Request to start ntp
     NET_APP_MSG_ID_START_MQTT,        ///!< Request to start mqtt
     NET_APP_MSG_ID_SET_SETTINGS,      ///!< Request to set network settings
     NET_APP_MSG_ID_SAVE_SETTINGS,     ///!< Request to save network settings
@@ -72,6 +74,16 @@ typedef union net_app_wifi_info
     net_app_wifi_ap_info_t ap;
 } net_app_wifi_info_t;
 
+typedef struct net_app_ntp_config
+{
+    uint8_t op_mode;
+    uint32_t sync_interval;
+    sntp_sync_mode_t sync_mode;
+    char server1[48];
+    char server2[48];
+    char server3[48];
+} net_app_ntp_config_t;
+
 /**
  * @brief Network app settings
  *
@@ -79,6 +91,7 @@ typedef union net_app_wifi_info
 typedef struct net_app_settings
 {
     wifi_sta_config_t wifi_sta;    ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;      ///!< NTP client configuration
     esp_mqtt_client_config_t mqtt; ///!< MQTT client configuration
 } net_app_settings_t;
 
@@ -91,6 +104,7 @@ typedef union net_app_msg_data
     httpd_config_t http_server;     ///!< HTTP server configuration
     wifi_ap_config_t wifi_ap;       ///!< WiFi AP configuration
     wifi_sta_config_t wifi_sta;     ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;       ///!< NTP client configuration
     esp_mqtt_client_config_t mqtt;  ///!< MQTT client configuration
     net_app_settings_t settings;    ///!< Network app settings
 } net_app_msg_data_t;
