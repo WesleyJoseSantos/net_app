@@ -161,10 +161,18 @@ void net_app_wifi_get_info(wifi_interface_t wifi_interface, net_app_wifi_info_t 
 bool net_app_mqtt_connected();
 
 /**
- * @brief Get MQTT Client
- *
- * @param mqtt_client mqtt client intance pointer output
+ * @brief Get NTP sync status
+ * 
+ * @return true sync ok
+ * @return false sync failed
  */
-void net_app_get_mqtt_client(esp_mqtt_client_handle_t *mqtt_client);
+bool net_app_ntp_sync_ok();
+
+/**
+ * @brief Get MQTT client
+ * 
+ * @return esp_mqtt_client_handle_t* client handle
+ */
+esp_mqtt_client_handle_t *net_app_mqtt_client();
 
 #endif //!__NET_APP__H__

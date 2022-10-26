@@ -63,6 +63,7 @@ typedef struct net
     wifi_t wifi;
     mqtt_t mqtt;
     net_app_settings_t settings;
+    bool ntp_sync_ok;
     char id[32];
 } net_t;
 
@@ -72,15 +73,16 @@ static net_t this;
 
 static void net_app_wifi_init(void);
 static void net_app_task(void *pvParameter);
-static void net_app_start_http_server(httpd_config_t *cfg);
-static void net_app_start_wifi_ap(wifi_ap_config_t *cfg);
-static void net_app_start_wifi_sta(wifi_sta_config_t *cfg);
-static void net_app_start_ntp(net_app_ntp_config_t *cfg);
-static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg);
-static void net_app_save_settings(net_app_settings_t *settings);
-static void net_app_load_settings(void);
+static void net_app_http_server_start(httpd_config_t *cfg);
+static void net_app_wifi_ap_start(wifi_ap_config_t *cfg);
+static void net_app_wifi_sta_start(wifi_sta_config_t *cfg);
+static void net_app_ntp_start(net_app_ntp_config_t *cfg);
+static void net_app_mqtt_start(esp_mqtt_client_config_t *cfg);
+static void net_app_settings_save(net_app_settings_t *settings);
+static void net_app_settings_load(void);
 static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event);
+static void net_app_ntp_sync_notification_cb();
 
 void net_app_start()
 {
@@ -125,9 +127,14 @@ bool net_app_mqtt_connected()
     return this.mqtt.status;
 }
 
-void net_app_get_mqtt_client(esp_mqtt_client_handle_t *mqtt_client)
+bool net_app_ntp_sync_ok()
 {
-    *mqtt_client = this.mqtt.client;
+    return this.ntp_sync_ok;
+}
+
+esp_mqtt_client_handle_t *net_app_mqtt_client()
+{
+    return &this.mqtt.client;
 }
 
 static void net_app_wifi_init(void)
@@ -159,15 +166,15 @@ static void net_app_task(void *pvParameter)
             {
             case NET_APP_MSG_ID_START_HTTP_SERVER:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_HTTP_SERVER");
-                net_app_start_http_server(&msg.data.http_server);
+                net_app_http_server_start(&msg.data.http_server);
                 break;
             case NET_APP_MSG_ID_START_WIFI_AP:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_WIFI_AP");
-                net_app_start_wifi_ap(&msg.data.wifi_ap);
+                net_app_wifi_ap_start(&msg.data.wifi_ap);
                 break;
             case NET_APP_MSG_ID_START_WIFI_STA:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_WIFI_STA");
-                net_app_start_wifi_sta(&msg.data.wifi_sta);
+                net_app_wifi_sta_start(&msg.data.wifi_sta);
                 break;
             case NET_APP_MSG_ID_START_NTP:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_NTP");
@@ -175,21 +182,21 @@ static void net_app_task(void *pvParameter)
                 break;
             case NET_APP_MSG_ID_START_MQTT:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_MQTT");
-                net_app_start_mqtt(&msg.data.mqtt);
+                net_app_mqtt_start(&msg.data.mqtt);
                 break;
             case NET_APP_MSG_ID_SET_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_SETTINGS");
-                net_app_start_wifi_sta(&msg.data.settings.wifi_sta);
-                net_app_start_ntp(&msg.data.settings.ntp);
-                net_app_start_mqtt(&msg.data.settings.mqtt);
+                net_app_wifi_sta_start(&msg.data.settings.wifi_sta);
+                net_app_ntp_start(&msg.data.settings.ntp);
+                net_app_mqtt_start(&msg.data.settings.mqtt);
                 break;
             case NET_APP_MSG_ID_SAVE_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SAVE_SETTINGS");
-                net_app_save_settings(&msg.data.settings);
+                net_app_settings_save(&msg.data.settings);
                 break;
             case NET_APP_MSG_ID_LOAD_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_LOAD_SETTINGS");
-                net_app_load_settings();
+                net_app_settings_load();
                 break;
             default:
                 break;
@@ -199,7 +206,7 @@ static void net_app_task(void *pvParameter)
     }
 }
 
-static void net_app_start_http_server(httpd_config_t *cfg)
+static void net_app_http_server_start(httpd_config_t *cfg)
 {
     cfg->task_priority = HTTP_SERVER_TASK_PRIORITY;
     cfg->core_id = HTTP_SERVER_TASK_CORE_ID;
@@ -207,14 +214,14 @@ static void net_app_start_http_server(httpd_config_t *cfg)
     ESP_ERROR_CHECK(http_server_start(cfg));
 }
 
-static void net_app_start_wifi_ap(wifi_ap_config_t *cfg)
+static void net_app_wifi_ap_start(wifi_ap_config_t *cfg)
 {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, (wifi_config_t *)cfg));
     ESP_ERROR_CHECK(esp_wifi_start());
     memcpy(this.wifi.ap.info.ssid, cfg->ssid, sizeof(this.wifi.ap.info.ssid));
 }
 
-static void net_app_start_wifi_sta(wifi_sta_config_t *cfg)
+static void net_app_wifi_sta_start(wifi_sta_config_t *cfg)
 {
     xEventGroupClearBits(this.event_group, BIT_WIFI_CONNECTED);
     memcpy(&this.settings.wifi_sta, cfg, sizeof(*cfg));
@@ -237,16 +244,16 @@ static void net_app_ntp_start(net_app_ntp_config_t *cfg)
     {
         sntp_set_sync_interval(cfg->sync_interval);
         sntp_setoperatingmode(cfg->op_mode);
-        sntp_setserver(0, cfg->server1);
+        sntp_setservername(0, cfg->server1);
 
         if(cfg->server2 && cfg->server2[0] != '\0')
         {
-            sntp_setserver(1, cfg->server2);
+            sntp_setservername(1, cfg->server2);
         }
 
         if(cfg->server3 && cfg->server3[0] != '\0')
         {
-            sntp_setserver(1, cfg->server3);
+            sntp_setservername(2, cfg->server3);
         }
 
         sntp_set_sync_mode(cfg->sync_mode);
@@ -259,7 +266,7 @@ static void net_app_ntp_start(net_app_ntp_config_t *cfg)
     xEventGroupWaitBits(this.event_group, BIT_NTP_SYNC_OK, true, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
-static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg)
+static void net_app_mqtt_start(esp_mqtt_client_config_t *cfg)
 {
     xEventGroupClearBits(this.event_group, BIT_MQTT_CONNECTED);
     memcpy(&this.settings.mqtt, cfg, sizeof(*cfg));
@@ -274,7 +281,7 @@ static void net_app_start_mqtt(esp_mqtt_client_config_t *cfg)
     xEventGroupWaitBits(this.event_group, BIT_MQTT_CONNECTED, false, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
-static void net_app_save_settings(net_app_settings_t *settings)
+static void net_app_settings_save(net_app_settings_t *settings)
 {
     FILE *fd = fopen(SETTINGS_FILENAME, "w");
     if (fd != NULL)
@@ -290,7 +297,7 @@ static void net_app_save_settings(net_app_settings_t *settings)
     fclose(fd);
 }
 
-static void net_app_load_settings(void)
+static void net_app_settings_load(void)
 {
     FILE *fd;
     struct stat file_stat;
@@ -423,7 +430,8 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event)
     return ESP_OK;
 }
 
-void net_app_ntp_sync_notification_cb()
+static void net_app_ntp_sync_notification_cb()
 {
+    this.ntp_sync_ok = true;
     xEventGroupSetBits(this.event_group, BIT_NTP_SYNC_OK);
 }

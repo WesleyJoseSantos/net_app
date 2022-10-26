@@ -27,6 +27,7 @@
 
 #define FILE_SERVER_BUFSIZE 1023
 #define WIFI_TIMEOUT 15000
+#define NTP_TIMEOUT 8000
 #define MQTT_TIMEOUT 5000
 
 httpd_handle_t this;
@@ -39,6 +40,8 @@ static esp_err_t net_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_index_handler(httpd_req_t *req);
 static esp_err_t net_wifi_ssids_handler(httpd_req_t *req);
+static esp_err_t net_ntp_index_handler(httpd_req_t *req);
+static esp_err_t net_ntp_post_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_post_handler(httpd_req_t *req);
 static esp_err_t net_mqtt_index_handler(httpd_req_t *req);
 static esp_err_t file_get_handler(httpd_req_t *req);
@@ -101,6 +104,20 @@ static void http_server_register_routes(void)
     };
     httpd_register_uri_handler(this, &net_wifi_ssids_index);
 
+    httpd_uri_t net_ntp_post = {
+        .uri = "/v1/net/ntp",
+        .handler = net_ntp_post_handler,
+        .method = HTTP_POST,
+    };
+    httpd_register_uri_handler(this, &net_ntp_post);
+
+    httpd_uri_t net_ntp_index = {
+        .uri = "/v1/net/ntp",
+        .handler = net_ntp_index_handler,
+        .method = HTTP_GET,
+    };
+    httpd_register_uri_handler(this, &net_ntp_index);
+
     httpd_uri_t net_mqtt_post = {
         .uri = "/v1/net/mqtt",
         .handler = net_mqtt_post_handler,
@@ -122,6 +139,7 @@ static void http_server_register_routes(void)
     };
     httpd_register_uri_handler(this, &system_reset_index);
 
+    // Must be the last uri register
     httpd_uri_t file_get = {
         .uri = "/*",
         .handler = file_get_handler,
@@ -216,6 +234,41 @@ esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
     }
 }
 
+esp_err_t net_ntp_post_handler(httpd_req_t *req)
+{
+    char content[256];
+    net_app_queue_msg_t msg;
+    httpd_req_recv(req, content, sizeof(content));
+
+    msg.id = NET_APP_MSG_ID_START_NTP;
+    net_app_ntp_config_from_json(&msg.data.ntp, content);
+    net_app_send_msg(&msg);
+    net_app_wait_msg_processing(NTP_TIMEOUT);
+
+    char *status = net_app_ntp_sync_ok() ? HTTPD_200 : HTTPD_408;
+    char *sync_ok = net_app_ntp_sync_ok() ? "true" : false;
+    sprintf(content, "{\"sync_ok\":%s", sync_ok);
+
+    httpd_resp_set_status(req, status);
+    httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+    httpd_resp_sendstr(req, content);
+
+    return ESP_OK;
+}
+
+esp_err_t net_ntp_index_handler(httpd_req_t *req)
+{
+    char content[32];
+    char *sync_ok = net_app_ntp_sync_ok() ? "true" : "false";
+    sprintf(content, "{\"sync_ok\":%s", sync_ok);
+
+    httpd_resp_set_status(req, HTTPD_200);
+    httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+    httpd_resp_sendstr(req, content);
+
+    return ESP_OK;
+}
+
 esp_err_t net_mqtt_post_handler(httpd_req_t *req)
 {
     int len = 256;
@@ -230,9 +283,9 @@ esp_err_t net_mqtt_post_handler(httpd_req_t *req)
 
     char *status = net_app_mqtt_connected() ? HTTPD_200 : HTTPD_408;
     char *connected = net_app_mqtt_connected() ? "true" : "false";
-    httpd_resp_set_status(req, status);
     sprintf(content, "{\"connected\":%s}", connected);
 
+    httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     httpd_resp_sendstr(req, content);
 
