@@ -63,6 +63,7 @@ typedef struct net
     wifi_t wifi;
     mqtt_t mqtt;
     net_app_settings_t settings;
+    bool ntp_sync_ok;
     char id[32];
 } net_t;
 
@@ -124,6 +125,11 @@ void net_app_wifi_get_info(wifi_interface_t wifi_interface, net_app_wifi_info_t 
 bool net_app_mqtt_connected()
 {
     return this.mqtt.status;
+}
+
+bool net_app_ntp_sync_ok()
+{
+    return this.ntp_sync_ok;
 }
 
 esp_mqtt_client_handle_t *net_app_mqtt_client()
@@ -426,5 +432,6 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event)
 
 static void net_app_ntp_sync_notification_cb()
 {
+    this.ntp_sync_ok = true;
     xEventGroupSetBits(this.event_group, BIT_NTP_SYNC_OK);
 }
