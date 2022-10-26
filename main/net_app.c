@@ -180,6 +180,7 @@ static void net_app_task(void *pvParameter)
             case NET_APP_MSG_ID_SET_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_SETTINGS");
                 net_app_start_wifi_sta(&msg.data.settings.wifi_sta);
+                net_app_start_ntp(&msg.data.settings.ntp);
                 net_app_start_mqtt(&msg.data.settings.mqtt);
                 break;
             case NET_APP_MSG_ID_SAVE_SETTINGS:
