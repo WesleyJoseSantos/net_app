@@ -20,8 +20,8 @@ void wifi_sta_config_from_json(wifi_sta_config_t *data, char *json_str)
     cJSON *ssid = cJSON_GetObjectItem(json, "ssid");
     cJSON *password = cJSON_GetObjectItem(json, "password");
     memset(data, 0, sizeof(*data));
-    if(ssid && ssid->valuestring[0] != '\0') strncpy((char*)data->ssid, ssid->valuestring, 32);
-    if(password && password->valuestring[0] != '\0') strncpy((char*)data->password, password->valuestring, 64);
+    if(ssid && ssid->valuestring[0] != '\0') strncpy((char*)data->ssid, ssid->valuestring, sizeof(data->ssid));
+    if(password && password->valuestring[0] != '\0') strncpy((char*)data->password, password->valuestring, sizeof(data->password));
     cJSON_Delete(json);
 }
 
