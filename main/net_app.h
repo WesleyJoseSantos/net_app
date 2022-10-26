@@ -70,18 +70,22 @@ typedef struct net_app_wifi_ap_info
  */
 typedef union net_app_wifi_info
 {
-    net_app_wifi_sta_info_t sta;
-    net_app_wifi_ap_info_t ap;
+    net_app_wifi_sta_info_t sta;    ///!< WiFi Station information
+    net_app_wifi_ap_info_t ap;      ///!< WiFi Access Point information 
 } net_app_wifi_info_t;
 
+/**
+ * @brief NTP client configuration
+ * 
+ */
 typedef struct net_app_ntp_config
 {
-    uint8_t op_mode;
-    uint32_t sync_interval;
-    sntp_sync_mode_t sync_mode;
-    char server1[48];
-    char server2[48];
-    char server3[48];
+    uint8_t op_mode;                ///!< NTP operation mode
+    uint32_t sync_interval;         ///!< NTP sync interval
+    sntp_sync_mode_t sync_mode;     ///!< NTP sync mode
+    char server1[48];               ///!< NTP server1 url
+    char server2[48];               ///!< NTP server2 url
+    char server3[48];               ///!< NTP server2 url
 } net_app_ntp_config_t;
 
 /**
