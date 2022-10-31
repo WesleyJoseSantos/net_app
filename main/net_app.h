@@ -38,12 +38,12 @@ typedef enum net_app_msg_id
  * @brief Network interfaces enumeration
  * 
  */
-typedef enum net_app_interface
+typedef enum net_app_netif
 {
     NET_APP_INTERFACE_WIFI_STA, ///!< WiFi Station interface
     NET_APP_INTERFACE_WIFI_AP,  ///!< WiFi Access Point interface
     NET_APP_INTERFACE_ETH,      ///!< Ethernet interface
-} net_app_interface_t;
+} net_app_netif_t;
 
 /**
  * @brief IP configuration
@@ -53,9 +53,14 @@ typedef struct net_app_ip_config
 {
     esp_netif_ip_info_t ip_info;     ///!< IP information
     esp_netif_dns_info_t dns_info;   ///!< DNS information
-    net_app_interface_t interface;   ///!< Target interface
     bool dhcp;                       ///!< DHCP status
 } net_app_ip_config_t;
+
+typedef struct net_app_netif_ip_config
+{
+    net_app_ip_config_t ip_config;  ///!< IP configuration
+    net_app_netif_t interface;      ///!< Target interface
+} net_app_netif_ip_config_t;
 
 /**
  * @brief WiFi connection
@@ -129,13 +134,13 @@ typedef struct net_app_settings
  */
 typedef union net_app_msg_data
 {
-    httpd_config_t http_server;     ///!< HTTP server configuration
-    net_app_ip_config_t ip_config;  ///!< IP configuration
-    wifi_ap_config_t wifi_ap;       ///!< WiFi AP configuration
-    wifi_sta_config_t wifi_sta;     ///!< WiFi station configuration
-    net_app_ntp_config_t ntp;       ///!< NTP client configuration
-    esp_mqtt_client_config_t mqtt;  ///!< MQTT client configuration
-    net_app_settings_t settings;    ///!< Network app settings
+    httpd_config_t http_server;    ///!< HTTP server configuration
+    net_app_netif_ip_config_t ip;  ///!< IP configuration
+    wifi_ap_config_t wifi_ap;      ///!< WiFi AP configuration
+    wifi_sta_config_t wifi_sta;    ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;      ///!< NTP client configuration
+    esp_mqtt_client_config_t mqtt; ///!< MQTT client configuration
+    net_app_settings_t settings;   ///!< Network app settings
 } net_app_msg_data_t;
 
 /**

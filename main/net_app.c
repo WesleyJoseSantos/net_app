@@ -74,7 +74,7 @@ static net_t this;
 static void net_app_wifi_init(void);
 static void net_app_task(void *pvParameter);
 static void net_app_http_server_start(httpd_config_t *cfg);
-static void net_app_set_ip_config(net_app_ip_config_t *cfg);
+static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg);
 static void net_app_set_netif_ip_config(esp_netif_t *netif, net_app_ip_config_t *cfg);
 static void net_app_wifi_ap_start(wifi_ap_config_t *cfg);
 static void net_app_wifi_sta_start(wifi_sta_config_t *cfg);
@@ -172,7 +172,7 @@ static void net_app_task(void *pvParameter)
                 break;
             case NET_APP_MSG_ID_SET_IP_CONFIG:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_IP_CONFIG");
-                net_app_set_ip_config(&msg.data.ip_config);
+                net_app_set_ip_config(&msg.data.ip);
                 break;
             case NET_APP_MSG_ID_START_WIFI_AP:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_WIFI_AP");
@@ -220,15 +220,15 @@ static void net_app_http_server_start(httpd_config_t *cfg)
     ESP_ERROR_CHECK(http_server_start(cfg));
 }
 
-static void net_app_set_ip_config(net_app_ip_config_t *cfg)
+static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg)
 {
     switch (cfg->interface)
     {
     case NET_APP_INTERFACE_WIFI_STA:
-        net_app_set_netif_ip_config(this.wifi.sta.netif, cfg);
+        net_app_set_netif_ip_config(this.wifi.sta.netif, &cfg->ip_config);
         break;
     case NET_APP_INTERFACE_WIFI_AP:
-        net_app_set_netif_ip_config(this.wifi.ap.netif, cfg);
+        net_app_set_netif_ip_config(this.wifi.ap.netif, &cfg->ip_config);
         break;
     case NET_APP_INTERFACE_ETH:
         // TODO
