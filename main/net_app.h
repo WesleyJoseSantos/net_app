@@ -43,6 +43,7 @@ typedef enum net_app_netif
     NET_APP_INTERFACE_WIFI_STA, ///!< WiFi Station interface
     NET_APP_INTERFACE_WIFI_AP,  ///!< WiFi Access Point interface
     NET_APP_INTERFACE_ETH,      ///!< Ethernet interface
+    NET_APP_INTERFACE_COUNT,    ///!< Interfaces count
 } net_app_netif_t;
 
 /**
@@ -123,9 +124,10 @@ typedef struct net_app_ntp_config
  */
 typedef struct net_app_settings
 {
-    wifi_sta_config_t wifi_sta;    ///!< WiFi station configuration
-    net_app_ntp_config_t ntp;      ///!< NTP client configuration
-    esp_mqtt_client_config_t mqtt; ///!< MQTT client configuration
+    net_app_ip_config_t ip_cfg[NET_APP_INTERFACE_COUNT];  ///!< IP configuration
+    wifi_sta_config_t wifi_sta;                           ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;                             ///!< NTP client configuration
+    esp_mqtt_client_config_t mqtt;                        ///!< MQTT client configuration
 } net_app_settings_t;
 
 /**
