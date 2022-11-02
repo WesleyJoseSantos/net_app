@@ -34,8 +34,9 @@
  */
 typedef enum http_server_err
 {
-    HTTP_SERVER_ERR_OK,         ///!< No Error
-    HTTP_SERVER_ERR_NOT_EXISTS, ///!< Content not exists
+    HTTP_SERVER_ERR_OK = ESP_OK,                       ///!< No Error
+    HTTP_SERVER_ERR_BASE = (ESP_ERR_HTTPD_BASE + 10),  ///!< Starting number of Http Server Error Codes
+    HTTP_SERVER_ERR_NOT_EXISTS,                        ///!< Content not exists
 } http_server_err_t;
 
 httpd_handle_t this;
@@ -46,6 +47,7 @@ static void http_server_register_routes(void);
 
 static esp_err_t net_post_handler(httpd_req_t *req);
 static esp_err_t net_ipconfig_post_handler(httpd_req_t *req);
+static esp_err_t net_ipconfig_get_handler(httpd_req_t *req);
 static esp_err_t net_wifi_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_index_handler(httpd_req_t *req);
 static esp_err_t net_wifi_ssids_handler(httpd_req_t *req);
@@ -99,6 +101,13 @@ static void http_server_register_routes(void)
         .method = HTTP_POST,
     };
     httpd_register_uri_handler(this, &net_ipconfig_post);
+
+    httpd_uri_t net_ipconfig_get = {
+        .uri = "/v1/net/ipconfig/*",
+        .handler = net_ipconfig_get_handler,
+        .method = HTTP_GET,
+    };
+    httpd_register_uri_handler(this, &net_ipconfig_get);
 
     httpd_uri_t net_wifi_post = {
         .uri = "/v1/net/wifi",
@@ -187,8 +196,6 @@ static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
 {
     int id = atoi(&req->uri[strlen(req->uri) - 1]);
     char content[256];
-    net_app_queue_msg_t msg;
-    httpd_req_recv(req, content, sizeof(content));
 
     if(id >= NET_APP_INTERFACE_COUNT)
     {
@@ -199,6 +206,8 @@ static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
     }
     else
     {
+        net_app_queue_msg_t msg;
+        httpd_req_recv(req, content, sizeof(content));
         msg.id = NET_APP_MSG_ID_SET_IP_CONFIG;
         msg.data.ip.interface = id;
         net_app_ip_config_from_json(&msg.data.ip.config, content);
@@ -212,9 +221,29 @@ static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
+static esp_err_t net_ipconfig_get_handler(httpd_req_t *req)
 {
+    int id = atoi(&req->uri[strlen(req->uri) - 1]);
+    char content[256];
 
+    if(id >= NET_APP_INTERFACE_COUNT)
+    {
+        int len = sprintf(content, STATUS_MSG, HTTP_SERVER_ERR_NOT_EXISTS, "Specified interface not exists");
+        httpd_resp_set_status(req, HTTPD_400);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, len);
+    }
+    else
+    {
+        net_app_ip_config_t ip_config;
+        net_app_get_ip_config(id, &ip_config);
+        net_app_ip_config_to_json(content, &ip_config);
+        httpd_resp_set_status(req, HTTPD_200);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, strlen(content));
+    }
+
+    return ESP_OK;
 }
 
 static esp_err_t net_wifi_post_handler(httpd_req_t *req)
@@ -236,6 +265,8 @@ static esp_err_t net_wifi_post_handler(httpd_req_t *req)
     httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     httpd_resp_sendstr(req, content);
+
+    ESP_LOGI(TAG, "WIFI HTTP POST");
 
     return ESP_OK;
 }
