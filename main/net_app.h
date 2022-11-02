@@ -59,7 +59,7 @@ typedef struct net_app_ip_config
 
 typedef struct net_app_netif_ip_config
 {
-    net_app_ip_config_t ip_config;  ///!< IP configuration
+    net_app_ip_config_t config;     ///!< IP configuration
     net_app_netif_t interface;      ///!< Target interface
 } net_app_netif_ip_config_t;
 
@@ -206,5 +206,13 @@ bool net_app_ntp_sync_ok();
  * @return esp_mqtt_client_handle_t* client handle
  */
 esp_mqtt_client_handle_t *net_app_mqtt_client();
+
+/**
+ * @brief Get network interface ip configuration
+ * 
+ * @param netif Network interface
+ * @param cfg Struct to store ip configuration
+ */
+void net_app_get_ip_config(net_app_netif_t netif, net_app_ip_config_t *cfg);
 
 #endif //!__NET_APP__H__
