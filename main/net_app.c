@@ -149,15 +149,11 @@ void net_app_get_ip_config(net_app_netif_t netif, net_app_ip_config_t *cfg)
     case NET_APP_INTERFACE_WIFI_STA:
         esp_netif = this.wifi.sta.netif;
         break;
-    case NET_APP_INTERFACE_WIFI_AP:
-        esp_netif = this.wifi.ap.netif;
-        break;
-    case NET_APP_INTERFACE_ETH:
+    // case NET_APP_INTERFACE_ETH:
         /// TODO: get ethernet netif
-        return;
-        break;
+        // return;
     default:
-        break;
+        return;
     }
 
     esp_netif_dhcpc_get_status(esp_netif, &dhcp_status);
@@ -220,7 +216,6 @@ static void net_app_task(void *pvParameter)
             case NET_APP_MSG_ID_SET_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_SETTINGS");
                 net_app_set_netif_ip_config(this.wifi.sta.netif, &msg.data.settings.ip_cfg[NET_APP_INTERFACE_WIFI_STA]);
-                net_app_set_netif_ip_config(this.wifi.ap.netif, &msg.data.settings.ip_cfg[NET_APP_INTERFACE_WIFI_AP]);
                 /// TODO: ethernet ip config
                 net_app_wifi_sta_start(&msg.data.settings.wifi_sta);
                 net_app_ntp_start(&msg.data.settings.ntp);
@@ -258,14 +253,10 @@ static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg)
         ESP_LOGI(TAG, "NET_APP_INTERFACE_WIFI_STA");
         net_app_set_netif_ip_config(this.wifi.sta.netif, &cfg->config);
         break;
-    case NET_APP_INTERFACE_WIFI_AP:
-        ESP_LOGI(TAG, "NET_APP_INTERFACE_WIFI_AP");
-        net_app_set_netif_ip_config(this.wifi.ap.netif, &cfg->config);
-        break;
-    case NET_APP_INTERFACE_ETH:
-        ESP_LOGI(TAG, "NET_APP_INTERFACE_ETH");
+    // case NET_APP_INTERFACE_ETH:
+        // ESP_LOGI(TAG, "NET_APP_INTERFACE_ETH");
         /// TODO: ethernet ip assignment
-        break;
+        // break;
     default:
         break;
     }
@@ -483,6 +474,7 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event)
         break;
     case MQTT_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+        this.mqtt.status = false;
         xEventGroupClearBits(this.event_group, BIT_MQTT_CONNECTED);
         break;
     case MQTT_EVENT_SUBSCRIBED:

@@ -41,8 +41,8 @@ typedef enum net_app_msg_id
 typedef enum net_app_netif
 {
     NET_APP_INTERFACE_WIFI_STA, ///!< WiFi Station interface
-    NET_APP_INTERFACE_WIFI_AP,  ///!< WiFi Access Point interface
-    NET_APP_INTERFACE_ETH,      ///!< Ethernet interface
+    // NET_APP_INTERFACE_WIFI_AP,  ///!< WiFi Access Point interface
+    // NET_APP_INTERFACE_ETH,      ///!< Ethernet interface
     NET_APP_INTERFACE_COUNT,    ///!< Interfaces count
 } net_app_netif_t;
 
