@@ -84,12 +84,14 @@ static void net_app_settings_save(net_app_settings_t *settings);
 static void net_app_settings_load(void);
 static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event);
-static void net_app_ntp_sync_notification_cb();
+static void net_app_ntp_sync_notification_cb(struct timeval *tv);
+static void net_app_wifi_sta_reconnect(void);
 
 void net_app_start()
 {
     ESP_LOGI(TAG, "Network Application Start");
     esp_log_level_set("wifi", ESP_LOG_NONE);
+    esp_log_level_set("wifi_init", ESP_LOG_NONE);
     this.queue = xQueueCreate(5, sizeof(net_app_queue_msg_t));
     xTaskCreatePinnedToCore(net_app_task, "net_app_task", NET_APP_TASK_STACK_SIZE, NULL, NET_APP_TASK_PRIORITY, this.task, NET_APP_TASK_CORE_ID);
 }
@@ -305,7 +307,7 @@ static void net_app_ntp_start(net_app_ntp_config_t *cfg)
 
     if (cfg->sync_interval == 0)
     {
-        cfg->sync_interval = 3600;
+        cfg->sync_interval = 3600 * 1000;
     }
 
     sntp_set_sync_interval(cfg->sync_interval);
@@ -353,6 +355,7 @@ static void net_app_settings_save(net_app_settings_t *settings)
     {
         char data[512];
         net_app_settings_to_json(data, settings);
+        ESP_LOGI(TAG, "Save: %s", data);
         fprintf(fd, data);
     }
     else
@@ -430,6 +433,7 @@ static void net_app_event_handler(void *arg, esp_event_base_t event_base, int32_
             ESP_LOGI(TAG, "WIFI_EVENT_STA_DISCONNECTED");
             this.wifi.sta.info.conn.status = false;
             xEventGroupClearBits(this.event_group, BIT_WIFI_CONNECTED);
+            net_app_wifi_sta_reconnect();
             break;
         default:
             break;
@@ -496,8 +500,17 @@ static int net_app_mqtt_event_handler(esp_mqtt_event_handle_t event)
     return ESP_OK;
 }
 
-static void net_app_ntp_sync_notification_cb()
+static void net_app_ntp_sync_notification_cb(struct timeval *tv)
 {
+    ESP_LOGI(TAG, "NTP_EVENT_SYNC_OK");
     this.ntp_sync_ok = true;
     xEventGroupSetBits(this.event_group, BIT_NTP_SYNC_OK);
+}
+
+static void net_app_wifi_sta_reconnect(void)
+{
+    net_app_queue_msg_t msg;
+    msg.id = NET_APP_MSG_ID_START_WIFI_STA;
+    msg.data.wifi_sta = this.settings.wifi_sta;
+    net_app_send_msg(&msg);
 }
