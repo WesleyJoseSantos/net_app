@@ -19,9 +19,7 @@
 #include "cJSON.h"
 
 #define IS_FILE_EXT(filename, ext) (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
-
 #define HOMEPAGE "/index.html"
-
 #define STATUS_MSG "{\"err\":%d,\"msg\":\"%s\"}"
 #define STATUS_MSG_OK "{\"err\":0,\"msg\":\"OK\"}"
 
@@ -29,6 +27,16 @@
 #define WIFI_TIMEOUT 15000
 #define NTP_TIMEOUT 8000
 #define MQTT_TIMEOUT 5000
+
+/**
+ * @brief Http Server Error Codes
+ * 
+ */
+typedef enum http_server_err
+{
+    HTTP_SERVER_ERR_OK,         ///!< No Error
+    HTTP_SERVER_ERR_NOT_EXISTS, ///!< Content not exists
+} http_server_err_t;
 
 httpd_handle_t this;
 
@@ -177,20 +185,36 @@ static esp_err_t net_post_handler(httpd_req_t *req)
 
 static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
 {
+    int id = atoi(&req->uri[strlen(req->uri) - 1]);
     char content[256];
     net_app_queue_msg_t msg;
     httpd_req_recv(req, content, sizeof(content));
 
-    msg.id = NET_APP_MSG_ID_SET_IP_CONFIG;
-    msg.data.ip.interface = atoi(&req->uri[strlen(req->uri) - 1]);
-    net_app_ip_config_from_json(&msg.data.ip.config, content);
-    net_app_send_msg(&msg);
+    if(id >= NET_APP_INTERFACE_COUNT)
+    {
+        int len = sprintf(content, STATUS_MSG, HTTP_SERVER_ERR_NOT_EXISTS, "Specified interface not exists");
+        httpd_resp_set_status(req, HTTPD_400);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, len);
+    }
+    else
+    {
+        msg.id = NET_APP_MSG_ID_SET_IP_CONFIG;
+        msg.data.ip.interface = id;
+        net_app_ip_config_from_json(&msg.data.ip.config, content);
+        net_app_send_msg(&msg);
 
-    httpd_resp_set_status(req, HTTPD_200);
-    httpd_resp_set_type(req, HTTPD_TYPE_JSON);
-    httpd_resp_send(req, STATUS_MSG_OK, sizeof(STATUS_MSG_OK));
+        httpd_resp_set_status(req, HTTPD_200);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, STATUS_MSG_OK, sizeof(STATUS_MSG_OK));
+    }
 
     return ESP_OK;
+}
+
+static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
+{
+
 }
 
 static esp_err_t net_wifi_post_handler(httpd_req_t *req)
