@@ -57,6 +57,7 @@ typedef struct file_server
 int http_server_start(httpd_config_t *config)
 {
     config->uri_match_fn = httpd_uri_match_wildcard;
+    config->max_uri_handlers = 15;
     
     int err_code = httpd_start(&this, config);
     if(err_code == ESP_OK)
@@ -246,8 +247,8 @@ esp_err_t net_ntp_post_handler(httpd_req_t *req)
     net_app_wait_msg_processing(NTP_TIMEOUT);
 
     char *status = net_app_ntp_sync_ok() ? HTTPD_200 : HTTPD_408;
-    char *sync_ok = net_app_ntp_sync_ok() ? "true" : false;
-    sprintf(content, "{\"sync_ok\":%s", sync_ok);
+    char *sync_ok = net_app_ntp_sync_ok() ? "true" : "false";
+    sprintf(content, "{\"sync_ok\":%s}", sync_ok);
 
     httpd_resp_set_status(req, status);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
