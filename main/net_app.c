@@ -74,6 +74,8 @@ static net_t this;
 static void net_app_wifi_init(void);
 static void net_app_task(void *pvParameter);
 static void net_app_http_server_start(httpd_config_t *cfg);
+static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg);
+static void net_app_set_netif_ip_config(esp_netif_t *netif, net_app_ip_config_t *cfg);
 static void net_app_wifi_ap_start(wifi_ap_config_t *cfg);
 static void net_app_wifi_sta_start(wifi_sta_config_t *cfg);
 static void net_app_ntp_start(net_app_ntp_config_t *cfg);
@@ -168,6 +170,10 @@ static void net_app_task(void *pvParameter)
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_HTTP_SERVER");
                 net_app_http_server_start(&msg.data.http_server);
                 break;
+            case NET_APP_MSG_ID_SET_IP_CONFIG:
+                ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_IP_CONFIG");
+                net_app_set_ip_config(&msg.data.ip);
+                break;
             case NET_APP_MSG_ID_START_WIFI_AP:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_START_WIFI_AP");
                 net_app_wifi_ap_start(&msg.data.wifi_ap);
@@ -186,6 +192,9 @@ static void net_app_task(void *pvParameter)
                 break;
             case NET_APP_MSG_ID_SET_SETTINGS:
                 ESP_LOGI(TAG, "NET_APP_MSG_ID_SET_SETTINGS");
+                net_app_set_netif_ip_config(this.wifi.sta.netif, &msg.data.settings.ip_cfg[NET_APP_INTERFACE_WIFI_STA]);
+                net_app_set_netif_ip_config(this.wifi.ap.netif, &msg.data.settings.ip_cfg[NET_APP_INTERFACE_WIFI_AP]);
+                /// TODO: ethernet ip config
                 net_app_wifi_sta_start(&msg.data.settings.wifi_sta);
                 net_app_ntp_start(&msg.data.settings.ntp);
                 net_app_mqtt_start(&msg.data.settings.mqtt);
@@ -212,6 +221,39 @@ static void net_app_http_server_start(httpd_config_t *cfg)
     cfg->core_id = HTTP_SERVER_TASK_CORE_ID;
     cfg->stack_size = HTTP_SERVER_TASK_STACK_SIZE;
     ESP_ERROR_CHECK(http_server_start(cfg));
+}
+
+static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg)
+{
+    switch (cfg->interface)
+    {
+    case NET_APP_INTERFACE_WIFI_STA:
+        net_app_set_netif_ip_config(this.wifi.sta.netif, &cfg->ip_config);
+        break;
+    case NET_APP_INTERFACE_WIFI_AP:
+        net_app_set_netif_ip_config(this.wifi.ap.netif, &cfg->ip_config);
+        break;
+    case NET_APP_INTERFACE_ETH:
+        /// TODO: ethernet ip assignment
+        break;
+    default:
+        break;
+    }
+    
+}
+
+static void net_app_set_netif_ip_config(esp_netif_t *netif, net_app_ip_config_t *cfg)
+{
+    if(cfg->dhcp)
+    {
+        esp_netif_dhcpc_start(netif);
+    }
+    else
+    {
+        esp_netif_dhcpc_start(netif);
+        esp_netif_set_ip_info(netif, &cfg->ip_info);
+        esp_netif_set_dns_info(netif, ESP_NETIF_DNS_MAIN, &cfg->dns_info);
+    }
 }
 
 static void net_app_wifi_ap_start(wifi_ap_config_t *cfg)

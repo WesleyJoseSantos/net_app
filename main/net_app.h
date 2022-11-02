@@ -24,6 +24,7 @@
 typedef enum net_app_msg_id
 {
     NET_APP_MSG_ID_START_HTTP_SERVER, ///!< Request to start http server
+    NET_APP_MSG_ID_SET_IP_CONFIG,     ///!< Request to set ip configuration
     NET_APP_MSG_ID_START_WIFI_AP,     ///!< Request to start wifi ap
     NET_APP_MSG_ID_START_WIFI_STA,    ///!< Request to start wifi sta
     NET_APP_MSG_ID_START_NTP,         ///!< Request to start ntp
@@ -32,6 +33,35 @@ typedef enum net_app_msg_id
     NET_APP_MSG_ID_SAVE_SETTINGS,     ///!< Request to save network settings
     NET_APP_MSG_ID_LOAD_SETTINGS,     ///!< Request to load network settings
 } net_app_msg_id_t;
+
+/**
+ * @brief Network interfaces enumeration
+ * 
+ */
+typedef enum net_app_netif
+{
+    NET_APP_INTERFACE_WIFI_STA, ///!< WiFi Station interface
+    NET_APP_INTERFACE_WIFI_AP,  ///!< WiFi Access Point interface
+    NET_APP_INTERFACE_ETH,      ///!< Ethernet interface
+    NET_APP_INTERFACE_COUNT,    ///!< Interfaces count
+} net_app_netif_t;
+
+/**
+ * @brief IP configuration
+ * 
+ */
+typedef struct net_app_ip_config
+{
+    esp_netif_ip_info_t ip_info;     ///!< IP information
+    esp_netif_dns_info_t dns_info;   ///!< DNS information
+    bool dhcp;                       ///!< DHCP status
+} net_app_ip_config_t;
+
+typedef struct net_app_netif_ip_config
+{
+    net_app_ip_config_t ip_config;  ///!< IP configuration
+    net_app_netif_t interface;      ///!< Target interface
+} net_app_netif_ip_config_t;
 
 /**
  * @brief WiFi connection
@@ -94,9 +124,10 @@ typedef struct net_app_ntp_config
  */
 typedef struct net_app_settings
 {
-    wifi_sta_config_t wifi_sta;    ///!< WiFi station configuration
-    net_app_ntp_config_t ntp;      ///!< NTP client configuration
-    esp_mqtt_client_config_t mqtt; ///!< MQTT client configuration
+    net_app_ip_config_t ip_cfg[NET_APP_INTERFACE_COUNT];  ///!< IP configuration
+    wifi_sta_config_t wifi_sta;                           ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;                             ///!< NTP client configuration
+    esp_mqtt_client_config_t mqtt;                        ///!< MQTT client configuration
 } net_app_settings_t;
 
 /**
@@ -105,12 +136,13 @@ typedef struct net_app_settings
  */
 typedef union net_app_msg_data
 {
-    httpd_config_t http_server;     ///!< HTTP server configuration
-    wifi_ap_config_t wifi_ap;       ///!< WiFi AP configuration
-    wifi_sta_config_t wifi_sta;     ///!< WiFi station configuration
-    net_app_ntp_config_t ntp;       ///!< NTP client configuration
-    esp_mqtt_client_config_t mqtt;  ///!< MQTT client configuration
-    net_app_settings_t settings;    ///!< Network app settings
+    httpd_config_t http_server;    ///!< HTTP server configuration
+    net_app_netif_ip_config_t ip;  ///!< IP configuration
+    wifi_ap_config_t wifi_ap;      ///!< WiFi AP configuration
+    wifi_sta_config_t wifi_sta;    ///!< WiFi station configuration
+    net_app_ntp_config_t ntp;      ///!< NTP client configuration
+    esp_mqtt_client_config_t mqtt; ///!< MQTT client configuration
+    net_app_settings_t settings;   ///!< Network app settings
 } net_app_msg_data_t;
 
 /**
