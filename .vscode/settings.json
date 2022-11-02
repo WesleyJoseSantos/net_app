@@ -19,6 +19,7 @@
         "thread": "c",
         "mqtt_client.h": "c",
         "cjson.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "esp_http_server.h": "c"
     },
 }

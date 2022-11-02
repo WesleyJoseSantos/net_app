@@ -114,8 +114,9 @@ void net_app_ntp_config_from_json(net_app_ntp_config_t *data, char*json_str)
     cJSON *server1 = cJSON_GetObjectItem(json, "server1");
     cJSON *server2 = cJSON_GetObjectItem(json, "server2");
     cJSON *server3 = cJSON_GetObjectItem(json, "server3");
+    memset(data, 0, sizeof(*data));
     if(op_mode) data->op_mode = op_mode->valueint;
-    if(sync_interval) data->sync_interval = op_mode->valueint;
+    if(sync_interval) data->sync_interval = sync_interval->valueint;
     if(sync_mode) data->sync_mode = sync_mode->valueint;
     if(server1 && server1->valuestring[0] != '\0') strncpy(data->server1, server1->valuestring, sizeof(data->server1));
     if(server2 && server2->valuestring[0] != '\0') strncpy(data->server2, server2->valuestring, sizeof(data->server2));
@@ -191,10 +192,10 @@ void net_app_settings_from_json(net_app_settings_t *data, char *json_str)
 void net_app_settings_to_json(char *json_str, net_app_settings_t *data)
 {
     char ip_cfg_json[128];
-    char wifi_json[128];
-    char ntp_json[128];
+    char wifi_json[192];
+    char ntp_json[386];
     char mqtt_json[192];
-    net_app_ip_config_to_json(ip_cfg_json, &data->ip_cfg);
+    net_app_ip_config_to_json(ip_cfg_json, &data->ip_cfg[0]);
     wifi_sta_config_to_json(wifi_json, &data->wifi_sta);
     net_app_ntp_config_to_json(ntp_json, &data->ntp);
     esp_mqtt_client_config_to_json(mqtt_json, &data->mqtt);
