@@ -19,9 +19,7 @@
 #include "cJSON.h"
 
 #define IS_FILE_EXT(filename, ext) (strcasecmp(&filename[strlen(filename) - sizeof(ext) + 1], ext) == 0)
-
 #define HOMEPAGE "/index.html"
-
 #define STATUS_MSG "{\"err\":%d,\"msg\":\"%s\"}"
 #define STATUS_MSG_OK "{\"err\":0,\"msg\":\"OK\"}"
 
@@ -30,6 +28,17 @@
 #define NTP_TIMEOUT 8000
 #define MQTT_TIMEOUT 5000
 
+/**
+ * @brief Http Server Error Codes
+ * 
+ */
+typedef enum http_server_err
+{
+    HTTP_SERVER_ERR_OK = ESP_OK,                       ///!< No Error
+    HTTP_SERVER_ERR_BASE = (ESP_ERR_HTTPD_BASE + 10),  ///!< Starting number of Http Server Error Codes
+    HTTP_SERVER_ERR_NOT_EXISTS,                        ///!< Content not exists
+} http_server_err_t;
+
 httpd_handle_t this;
 
 static const char *TAG = "http_server";
@@ -37,6 +46,8 @@ static const char *TAG = "http_server";
 static void http_server_register_routes(void);
 
 static esp_err_t net_post_handler(httpd_req_t *req);
+static esp_err_t net_ipconfig_post_handler(httpd_req_t *req);
+static esp_err_t net_ipconfig_get_handler(httpd_req_t *req);
 static esp_err_t net_wifi_post_handler(httpd_req_t *req);
 static esp_err_t net_wifi_index_handler(httpd_req_t *req);
 static esp_err_t net_wifi_ssids_handler(httpd_req_t *req);
@@ -83,6 +94,20 @@ static void http_server_register_routes(void)
         .method = HTTP_POST,
     };
     httpd_register_uri_handler(this, &net_post);
+
+    httpd_uri_t net_ipconfig_post = {
+        .uri = "/v1/net/ipconfig/*",
+        .handler = net_ipconfig_post_handler,
+        .method = HTTP_POST,
+    };
+    httpd_register_uri_handler(this, &net_ipconfig_post);
+
+    httpd_uri_t net_ipconfig_get = {
+        .uri = "/v1/net/ipconfig/*",
+        .handler = net_ipconfig_get_handler,
+        .method = HTTP_GET,
+    };
+    httpd_register_uri_handler(this, &net_ipconfig_get);
 
     httpd_uri_t net_wifi_post = {
         .uri = "/v1/net/wifi",
@@ -150,12 +175,11 @@ static void http_server_register_routes(void)
     httpd_register_uri_handler(this, &file_get);
 }
 
-esp_err_t net_post_handler(httpd_req_t *req)
+static esp_err_t net_post_handler(httpd_req_t *req)
 {
-    int len = 512;
     char content[512];
     net_app_queue_msg_t msg;
-    httpd_req_recv(req, content, len);
+    httpd_req_recv(req, content, sizeof(content));
 
     msg.id = NET_APP_MSG_ID_SAVE_SETTINGS;
     net_app_settings_from_json(&msg.data.settings, content);
@@ -163,18 +187,71 @@ esp_err_t net_post_handler(httpd_req_t *req)
 
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
-    httpd_resp_send(req, STATUS_MSG_OK, 12);
+    httpd_resp_send(req, STATUS_MSG_OK, sizeof(STATUS_MSG_OK));
 
     return ESP_OK;
 }
 
-esp_err_t net_wifi_post_handler(httpd_req_t *req)
+static esp_err_t net_ipconfig_post_handler(httpd_req_t *req)
 {
-    int len = 256;
+    int id = atoi(&req->uri[strlen(req->uri) - 1]);
+    char content[256];
+
+    if(id >= NET_APP_INTERFACE_COUNT)
+    {
+        int len = sprintf(content, STATUS_MSG, HTTP_SERVER_ERR_NOT_EXISTS, "Specified interface not exists");
+        httpd_resp_set_status(req, HTTPD_400);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, len);
+    }
+    else
+    {
+        net_app_queue_msg_t msg;
+        httpd_req_recv(req, content, sizeof(content));
+        msg.id = NET_APP_MSG_ID_SET_IP_CONFIG;
+        msg.data.ip.interface = id;
+        net_app_ip_config_from_json(&msg.data.ip.config, content);
+        net_app_send_msg(&msg);
+
+        httpd_resp_set_status(req, HTTPD_200);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, STATUS_MSG_OK, sizeof(STATUS_MSG_OK));
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t net_ipconfig_get_handler(httpd_req_t *req)
+{
+    int id = atoi(&req->uri[strlen(req->uri) - 1]);
+    char content[256];
+
+    if(id >= NET_APP_INTERFACE_COUNT)
+    {
+        int len = sprintf(content, STATUS_MSG, HTTP_SERVER_ERR_NOT_EXISTS, "Specified interface not exists");
+        httpd_resp_set_status(req, HTTPD_400);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, len);
+    }
+    else
+    {
+        net_app_ip_config_t ip_config;
+        net_app_get_ip_config(id, &ip_config);
+        net_app_ip_config_to_json(content, &ip_config);
+        httpd_resp_set_status(req, HTTPD_200);
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+        httpd_resp_send(req, content, strlen(content));
+    }
+
+    return ESP_OK;
+}
+
+static esp_err_t net_wifi_post_handler(httpd_req_t *req)
+{
     char content[256];
     net_app_queue_msg_t msg;
     net_app_wifi_info_t info;
-    httpd_req_recv(req, content, len);
+    httpd_req_recv(req, content, sizeof(content));
 
     msg.id = NET_APP_MSG_ID_START_WIFI_STA;
     wifi_sta_config_from_json(&msg.data.wifi_sta, content);
@@ -189,10 +266,12 @@ esp_err_t net_wifi_post_handler(httpd_req_t *req)
     httpd_resp_set_type(req, HTTPD_TYPE_JSON);
     httpd_resp_sendstr(req, content);
 
+    ESP_LOGI(TAG, "WIFI HTTP POST");
+
     return ESP_OK;
 }
 
-esp_err_t net_wifi_index_handler(httpd_req_t *req)
+static esp_err_t net_wifi_index_handler(httpd_req_t *req)
 {
     char content[256];
     net_app_wifi_info_t info;
@@ -206,9 +285,9 @@ esp_err_t net_wifi_index_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
+static esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
 {
-    esp_err_t err;
+    static esp_err_t err;
     char content[512];
     uint16_t list_siz = 10;
     wifi_ap_record_t wifi_ap_record[list_siz];
@@ -235,7 +314,7 @@ esp_err_t net_wifi_ssids_handler(httpd_req_t *req)
     }
 }
 
-esp_err_t net_ntp_post_handler(httpd_req_t *req)
+static esp_err_t net_ntp_post_handler(httpd_req_t *req)
 {
     char content[256];
     net_app_queue_msg_t msg;
@@ -257,7 +336,7 @@ esp_err_t net_ntp_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t net_ntp_index_handler(httpd_req_t *req)
+static esp_err_t net_ntp_index_handler(httpd_req_t *req)
 {
     char content[32];
     char *sync_ok = net_app_ntp_sync_ok() ? "true" : "false";
@@ -270,12 +349,11 @@ esp_err_t net_ntp_index_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t net_mqtt_post_handler(httpd_req_t *req)
+static esp_err_t net_mqtt_post_handler(httpd_req_t *req)
 {
-    int len = 256;
     char content[256];
     net_app_queue_msg_t msg;
-    httpd_req_recv(req, content, len);
+    httpd_req_recv(req, content, sizeof(content));
 
     msg.id = NET_APP_MSG_ID_START_MQTT;
     esp_mqtt_client_config_from_json(&msg.data.mqtt, content);
@@ -293,7 +371,7 @@ esp_err_t net_mqtt_post_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t net_mqtt_index_handler(httpd_req_t *req)
+static esp_err_t net_mqtt_index_handler(httpd_req_t *req)
 {
     char content[32];
     char *connected = net_app_mqtt_connected() ? "true" : "false";
@@ -306,7 +384,7 @@ esp_err_t net_mqtt_index_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t system_reset_index_handler(httpd_req_t *req)
+static esp_err_t system_reset_index_handler(httpd_req_t *req)
 {
     httpd_resp_set_status(req, HTTPD_200);
     httpd_resp_send(req, NULL, 0);
@@ -316,7 +394,7 @@ esp_err_t system_reset_index_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-esp_err_t file_get_handler(httpd_req_t *req)
+static esp_err_t file_get_handler(httpd_req_t *req)
 {
     FILE *fd = NULL;
     char filename[517];
