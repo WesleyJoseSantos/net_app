@@ -239,12 +239,11 @@ static void net_app_set_ip_config(net_app_netif_ip_config_t *cfg)
     default:
         break;
     }
-    
 }
 
 static void net_app_set_netif_ip_config(esp_netif_t *netif, net_app_ip_config_t *cfg)
 {
-    if(cfg->dhcp)
+    if (cfg->dhcp)
     {
         esp_netif_dhcpc_start(netif);
     }
@@ -282,29 +281,32 @@ static void net_app_ntp_start(net_app_ntp_config_t *cfg)
 {
     xEventGroupClearBits(this.event_group, BIT_NTP_SYNC_OK);
     sntp_stop();
-    if(cfg->sync_interval != 0)
+
+    if (cfg->sync_interval == 0)
     {
-        sntp_set_sync_interval(cfg->sync_interval);
-        sntp_setoperatingmode(cfg->op_mode);
-        sntp_setservername(0, cfg->server1);
-
-        if(cfg->server2 && cfg->server2[0] != '\0')
-        {
-            sntp_setservername(1, cfg->server2);
-        }
-
-        if(cfg->server3 && cfg->server3[0] != '\0')
-        {
-            sntp_setservername(2, cfg->server3);
-        }
-
-        sntp_set_sync_mode(cfg->sync_mode);
-        sntp_set_time_sync_notification_cb(net_app_ntp_sync_notification_cb);
-        sntp_init();
-
-        setenv("TZ", "<-03>3", 1);
-        tzset();
+        cfg->sync_interval = 3600;
     }
+
+    sntp_set_sync_interval(cfg->sync_interval);
+    sntp_setoperatingmode(cfg->op_mode);
+    sntp_setservername(0, cfg->server1);
+
+    if (cfg->server2 && cfg->server2[0] != '\0')
+    {
+        sntp_setservername(1, cfg->server2);
+    }
+
+    if (cfg->server3 && cfg->server3[0] != '\0')
+    {
+        sntp_setservername(2, cfg->server3);
+    }
+
+    sntp_set_sync_mode(cfg->sync_mode);
+    sntp_set_time_sync_notification_cb(net_app_ntp_sync_notification_cb);
+    sntp_init();
+
+    setenv("TZ", "<-03>3", 1);
+    tzset();
     xEventGroupWaitBits(this.event_group, BIT_NTP_SYNC_OK, true, true, EVT_TIMEOUT / portTICK_PERIOD_MS);
 }
 
